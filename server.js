@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/chat', async (req, res) => {
     try {
-        const { model, prompt } = req.body;
+        const { model, prompt, tone } = req.body;
         const userApiKey = req.headers['x-groq-api-key'] || process.env.GROQ_API_KEY;
 
         if (!userApiKey) {
@@ -21,13 +21,18 @@ app.post('/api/chat', async (req, res) => {
 
         const groq = new Groq({ apiKey: userApiKey });
 
+        let systemPrompt = "당신은 친절하고 정중한 AI 어시스턴트입니다.";
+        if (tone === 'friendly') {
+            systemPrompt = "당신은 친근하고 다정한 친구 같은 AI입니다. 반말과 편안한 어조를 사용하세요.";
+        } else if (tone === 'professional') {
+            systemPrompt = "당신은 전문적이고 간결하게 핵심만 전달하는 비즈니스 AI입니다.";
+        }
+
         const completion = await groq.chat.completions.create({
             model: model || "llama-3.3-70b-versatile",
             messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompt }
             ],
             temperature: 0.7,
             max_tokens: 2048,
