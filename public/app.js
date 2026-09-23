@@ -118,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function appendMessage(text, sender, imageUrl = null) {
         const messageDiv = document.createElement('div');
-        // 문법 오류 수정 완료 (toString(36) 후 substring 사용)
         const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
         messageDiv.id = messageId;
         messageDiv.className = `message ${sender}-message`;

@@ -16,7 +16,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.post('/api/chat', async (req, res) => {
     try {
         const { model, prompt, image } = req.body;
-        // 클라이언트 헤더 또는 환경 변수에서 API 키 추출
         const userApiKey = req.headers['x-groq-api-key'] || process.env.GROQ_API_KEY;
 
         if (!userApiKey) {
@@ -37,14 +36,14 @@ app.post('/api/chat', async (req, res) => {
                 {
                     type: "image_url",
                     image_url: {
-                        url: image // "data:image/jpeg;base64,..." 형식의 데이터
+                        url: image
                     }
                 }
             ];
         }
 
         const completion = await groq.chat.completions.create({
-            model: model || "llama-3.2-11b-vision-preview",
+            model: model || "llama-3.3-70b-versatile",
             messages: [
                 {
                     role: "user",
