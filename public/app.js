@@ -1,326 +1,151 @@
-let currentUser = null;
-let currentSessionId = Date.now().toString();
-let currentMessages = [];
-let customBgData = '';
-
-if ('Notification' in window) {
-    Notification.requestPermission();
-}
-
-// 10초 자동 저장
-setInterval(() => {
-    if (currentUser && currentMessages.length > 0) {
-        saveCurrentSession();
-    }
-}, 10000);
-
-async function handleSignup() {
-    const nickname = document.getElementById('auth-nickname').value;
-    const password = document.getElementById('auth-password').value;
-    const passwordConfirm = document.getElementById('auth-password-confirm').value;
-
-    const res = await fetch('/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname, password, passwordConfirm })
-    });
-    const data = await res.json();
-    if (data.error) alert(data.error);
-    else { alert('회원가입 성공!'); handleLogin(); }
-}
-
-async function handleLogin() {
-    const nickname = document.getElementById('auth-nickname').value;
-    const password = document.getElementById('auth-password').value;
-
-    const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname, password })
-    });
-    const data = await res.json();
-    if (data.error) return alert(data.error);
-
-    currentUser = data;
-    document.getElementById('auth-modal').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
+document.addEventListener('DOMContentLoaded', () => {
+    const chatMessages = document.getElementById('chat-messages');
+    const promptInput = document.getElementById('prompt-input');
+    const sendBtn = document.getElementById('send-btn');
+    const imageFileInput = document.getElementById('image-file-input');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const removeImageBtn = document.getElementById('remove-image-btn');
+    const modelSelect = document.getElementById('model-select');
     
-    await loadSettings();
-    await loadSessions();
-}
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const apiKeyInput = document.getElementById('api-key-input');
 
-async function sendMessage() {
-    const input = document.getElementById('user-input');
-    const text = input.value.trim();
-    if (!text) return;
+    let base64Image = null;
 
-    appendMessage('user', text);
-    currentMessages.push({ role: 'user', content: text });
-    input.value = '';
+    // 로컬 스토리지에서 API 키 불러오기
+    const savedApiKey = localStorage.getItem('groq_api_key') || '';
+    if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+    }
 
-    const modelTier = document.getElementById('model-select').value;
-    const speakStyle = document.getElementById('cfg-speak-style').value;
-    const replyLang = document.getElementById('cfg-site-lang').value;
+    // 설정 모달 열기/닫기
+    settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+    saveSettingsBtn.addEventListener('click', () => {
+        localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
+        settingsModal.classList.add('hidden');
+        alert('API 키가 저장되었습니다.');
+    });
 
-    // "생각 중..." 표시 시작
-    showThinkingIndicator();
+    // 이미지 파일 선택 시 처리 (Base64 변환 및 미리보기)
+    imageFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                base64Image = reader.result; // "data:image/jpeg;base64,..."
+                imagePreview.src = base64Image;
+                imagePreviewContainer.classList.remove('hidden');
+            };
+            reader.onerror = (error) => {
+                console.error('이미지 읽기 실패:', error);
+            };
+        }
+    });
 
-    try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: text,
-                modelTier,
-                speakStyle,
-                replyLang,
-                history: currentMessages.slice(0, -1)
-            })
-        });
+    // 이미지 미리보기 취소
+    removeImageBtn.addEventListener('click', () => {
+        base64Image = null;
+        imageFileInput.value = '';
+        imagePreview.src = '';
+        imagePreviewContainer.classList.add('hidden');
+    });
 
-        const data = await res.json();
+    // 메시지 전송 함수
+    const handleSendMessage = async () => {
+        const text = promptInput.value.trim();
+        const apiKey = apiKeyInput.value.trim() || localStorage.getItem('groq_api_key');
+        const selectedModel = modelSelect.value;
 
-        // "생각 중..." 표시 제거
-        removeThinkingIndicator();
-
-        if (data.error) {
-            appendMessage('assistant', `⚠️ 오류: ${data.error}`);
+        if (!text && !base64Image) return;
+        if (!apiKey) {
+            alert('우측 상단 [환경 설정]에서 Groq API Key를 먼저 입력해주세요.');
+            settingsModal.classList.remove('hidden');
             return;
         }
 
-        if (data.reply) {
-            appendMessage('assistant', data.reply);
-            currentMessages.push({ role: 'assistant', content: data.reply });
-            saveCurrentSession();
+        // 사용자 메시지 UI 추가
+        appendMessage(text, 'user', base64Image);
 
-            if (document.hidden && Notification.permission === 'granted') {
-                new Notification('GPT 답변 완료', {
-                    body: data.reply.substring(0, 50) + '...'
-                });
+        // 입력창 초기화
+        promptInput.value = '';
+        const currentImage = base64Image;
+        base64Image = null;
+        imageFileInput.value = '';
+        imagePreviewContainer.classList.add('hidden');
+
+        // AI 로딩 메시지 추가
+        const loadingId = appendMessage('AI가 답변을 생성 중입니다...', 'ai loading');
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-groq-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    model: selectedModel,
+                    prompt: text,
+                    image: currentImage // Base64 이미지 데이터 전송
+                })
+            });
+
+            const data = await response.json();
+            
+            // 로딩 메시지 제거 후 실제 답변 출력
+            removeMessage(loadingId);
+
+            if (response.ok) {
+                appendMessage(data.reply, 'ai');
+            } else {
+                appendMessage(`[Groq API 오류]: ${data.error || '알 수 없는 오류가 발생했습니다.'}`, 'ai error');
             }
-        } else {
-            appendMessage('assistant', '⚠️ 알 수 없는 오류가 발생했습니다.');
+        } catch (error) {
+            removeMessage(loadingId);
+            appendMessage(`[네트워크 오류]: ${error.message}`, 'ai error');
         }
-    } catch (err) {
-        removeThinkingIndicator();
-        appendMessage('assistant', `⚠️ 통신 오류: ${err.message}`);
-    }
-}
+    };
 
-// "생각하는 중..." 문구 표시 함수
-function showThinkingIndicator() {
-    removeThinkingIndicator();
-    const container = document.getElementById('chat-messages');
-    const div = document.createElement('div');
-    div.id = 'thinking-indicator';
-    div.className = 'message assistant thinking';
-    div.style.fontStyle = 'italic';
-    div.style.opacity = '0.8';
-    div.innerText = '🤔 답변을 생각하는 중입니다...';
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-}
-
-function removeThinkingIndicator() {
-    const indicator = document.getElementById('thinking-indicator');
-    if (indicator) indicator.remove();
-}
-
-function appendMessage(role, text) {
-    const container = document.getElementById('chat-messages');
-    const div = document.createElement('div');
-    div.className = `message ${role}`;
-    div.innerText = text;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-}
-
-async function saveCurrentSession() {
-    if (!currentUser) return;
-    const title = currentMessages[0]?.content.substring(0, 15) || '새로운 세션';
-    const model = document.getElementById('model-select').value;
-
-    await fetch('/api/sessions/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            sessionId: currentSessionId,
-            userId: currentUser.userId,
-            title,
-            model,
-            messages: currentMessages
-        })
-    });
-    document.getElementById('save-status').innerText = '자동 저장 완료';
-}
-
-async function createNewSession() {
-    await saveCurrentSession();
-    currentSessionId = Date.now().toString();
-    currentMessages = [];
-    document.getElementById('chat-messages').innerHTML = '';
-    loadSessions();
-}
-
-// 세션 목록 불러오기 및 삭제 버튼 구성
-async function loadSessions() {
-    const res = await fetch(`/api/sessions/${currentUser.userId}`);
-    const data = await res.json();
-    const list = document.getElementById('session-list');
-    list.innerHTML = '';
-    if (data.sessions) {
-        data.sessions.forEach(s => {
-            const item = document.createElement('div');
-            item.className = 'session-item';
-            item.style.display = 'flex';
-            item.style.justifyContent = 'space-between';
-            item.style.alignItems = 'center';
-            item.style.padding = '8px 12px';
-            item.style.cursor = 'pointer';
-
-            const titleSpan = document.createElement('span');
-            titleSpan.innerText = s.title;
-            titleSpan.style.flex = '1';
-            titleSpan.onclick = async () => {
-                await saveCurrentSession();
-                currentSessionId = s.id;
-                currentMessages = s.messages;
-                renderMessages();
-            };
-
-            const delBtn = document.createElement('button');
-            delBtn.innerText = '🗑️';
-            delBtn.style.background = 'none';
-            delBtn.style.border = 'none';
-            delBtn.style.cursor = 'pointer';
-            delBtn.style.padding = '2px 6px';
-            delBtn.style.fontSize = '14px';
-            delBtn.title = '세션 삭제';
-
-            delBtn.onclick = async (e) => {
-                e.stopPropagation(); // 세션 전환 이벤트 방지
-                const confirmDelete = confirm('정말 이 세션을 삭제하시겠습니까?');
-                if (confirmDelete) {
-                    await deleteSession(s.id);
-                }
-            };
-
-            item.appendChild(titleSpan);
-            item.appendChild(delBtn);
-            list.appendChild(item);
-        });
-    }
-}
-
-// 세션 삭제 실행 함수
-async function deleteSession(sessionId) {
-    try {
-        const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-            if (currentSessionId === sessionId) {
-                currentSessionId = Date.now().toString();
-                currentMessages = [];
-                document.getElementById('chat-messages').innerHTML = '';
-            }
-            await loadSessions();
-        } else {
-            alert('삭제에 실패했습니다.');
-        }
-    } catch (err) {
-        alert('삭제 중 오류 발생: ' + err.message);
-    }
-}
-
-function renderMessages() {
-    const container = document.getElementById('chat-messages');
-    container.innerHTML = '';
-    currentMessages.forEach(m => appendMessage(m.role, m.content));
-}
-
-function handleBgPhoto(input) {
-    const file = input.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            customBgData = e.target.result;
-            applyTheme('custom');
-        };
-        reader.readAsDataURL(file);
-    }
-}
-
-function applyTheme(type) {
-    document.body.className = `${type}-theme`;
-    if (type === 'custom' && customBgData) {
-        document.body.style.backgroundImage = `url(${customBgData})`;
-    } else {
-        document.body.style.backgroundImage = 'none';
-    }
-}
-
-function toggleCustomPhotoInput(val) {
-    const group = document.getElementById('custom-photo-group');
-    if (val === 'custom') {
-        group.classList.remove('hidden');
-    } else {
-        group.classList.add('hidden');
-        applyTheme(val);
-    }
-}
-
-function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
-async function closeSettings() {
-    document.getElementById('settings-modal').classList.add('hidden');
-    const themeType = document.getElementById('cfg-theme-type').value;
-    applyTheme(themeType);
-
-    await fetch('/api/settings/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            userId: currentUser.userId,
-            siteNameKo: document.getElementById('cfg-name-ko').value,
-            siteNameEn: document.getElementById('cfg-name-en').value,
-            speakStyle: document.getElementById('cfg-speak-style').value,
-            siteLang: document.getElementById('cfg-site-lang').value,
-            replyLang: document.getElementById('cfg-site-lang').value,
-            themeType,
-            customThemeBg: customBgData
-        })
-    });
-}
-
-async function loadSettings() {
-    const res = await fetch(`/api/settings/${currentUser.userId}`);
-    const data = await res.json();
-    if (data.settings && data.settings.theme_type) {
-        document.getElementById('cfg-theme-type').value = data.settings.theme_type;
-        applyTheme(data.settings.theme_type);
-        if (data.settings.custom_theme_bg) {
-            customBgData = data.settings.custom_theme_bg;
-            if (data.settings.theme_type === 'custom') applyTheme('custom');
-        }
-    }
-}
-
-// PC 키보드 엔터(Enter) 전송
-function initEnterKeyHandler() {
-    const inputArea = document.getElementById('user-input');
-    if (!inputArea) return;
-
-    inputArea.addEventListener('keydown', (e) => {
-        if (e.isComposing || e.keyCode === 229) return;
-
+    sendBtn.addEventListener('click', handleSendMessage);
+    promptInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            sendMessage();
+            handleSendMessage();
         }
     });
-}
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initEnterKeyHandler);
-} else {
-    initEnterKeyHandler();
-}
+    // 화면에 메시지 추가 헬퍼 함수
+    function appendMessage(text, sender, imageUrl = null) {
+        const messageDiv = document.createElement('div');
+        const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36.substr(2, 9));
+        messageDiv.id = messageId;
+        messageDiv.className = `message ${sender}-message`;
+
+        let contentHtml = '';
+        if (imageUrl) {
+            contentHtml += `<div class="message-image"><img src="${imageUrl}" alt="첨부 이미지"></div>`;
+        }
+        if (text) {
+            contentHtml += `<div class="message-content">${escapeHtml(text)}</div>`;
+        }
+
+        messageDiv.innerHTML = contentHtml;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        return messageId;
+    }
+
+    function removeMessage(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+});
