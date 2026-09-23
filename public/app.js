@@ -8,14 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsModal = document.getElementById('settings-modal');
     const saveSettingsBtn = document.getElementById('save-settings-btn');
     const apiKeyInput = document.getElementById('api-key-input');
+    const logoutBtn = document.getElementById('logout-btn');
 
-    // 로컬 스토리지에서 API 키 불러오기
     const savedApiKey = localStorage.getItem('groq_api_key') || '';
     if (savedApiKey) {
         apiKeyInput.value = savedApiKey;
     }
 
-    // 설정 모달 열기/닫기
     settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
     saveSettingsBtn.addEventListener('click', () => {
         localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
@@ -23,7 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('API 키가 저장되었습니다.');
     });
 
-    // 메시지 전송 함수
+    logoutBtn.addEventListener('click', () => {
+        if (confirm('로그아웃 하시겠습니까?')) {
+            localStorage.removeItem('groq_api_key');
+            apiKeyInput.value = '';
+            alert('로그아웃되었습니다.');
+        }
+    });
+
     const handleSendMessage = async () => {
         const text = promptInput.value.trim();
         const apiKey = apiKeyInput.value.trim() || localStorage.getItem('groq_api_key');
@@ -37,11 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 사용자 메시지 UI 추가
         appendMessage(text, 'user');
         promptInput.value = '';
 
-        // AI 로딩 메시지 추가
         const loadingId = appendMessage('AI가 답변을 생성 중입니다...', 'ai loading');
 
         try {

@@ -8,10 +8,8 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 정적 파일 제공 (public 폴더)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 채팅 API 엔드포인트
 app.post('/api/chat', async (req, res) => {
     try {
         const { model, prompt } = req.body;
@@ -44,7 +42,6 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// 서버 실행
 app.listen(PORT, () => {
     console.log(`서버가 http://localhost:${PORT} 에서 정상 실행 중입니다.`);
 });

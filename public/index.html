@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom GPT - Text Chat</title>
+    <title>Custom GPT</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,33 +11,46 @@
         <!-- 사이드바 -->
         <aside class="sidebar">
             <button id="new-chat-btn" class="btn-primary">+ 새 채팅</button>
-            <div class="chat-history-list" id="chat-history"></div>
+            <div class="chat-history-list" id="chat-history">
+                <div class="history-item active">
+                    <span>새 대화</span>
+                    <button class="delete-history">🗑️</button>
+                </div>
+            </div>
         </aside>
 
         <!-- 메인 채팅 영역 -->
         <main class="chat-main">
             <header class="chat-header">
-                <h1 id="app-title">Custom GPT</h1>
-                <div class="header-controls">
+                <div class="header-left">
+                    <h1 id="app-title">Custom GPT</h1>
                     <select id="model-select" class="model-select">
-                        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (고성능)</option>
-                        <option value="llama-3.1-8b-instant">Llama 3.1 8B (초고속)</option>
+                        <option value="llama-3.3-70b-versatile">GPT-OSS 120B (최상급 성능)</option>
+                        <option value="llama-3.1-8b-instant">GPT-OSS 20B (초고속)</option>
                     </select>
+                </div>
+                <div class="header-controls">
+                    <span class="user-profile">👤 하람 님</span>
                     <button id="settings-btn" class="btn-secondary">환경 설정</button>
+                    <button id="logout-btn" class="btn-danger">로그아웃</button>
                 </div>
             </header>
 
             <!-- 채팅 메시지 표시 영역 -->
             <div class="chat-messages" id="chat-messages">
                 <div class="message ai-message">
-                    <div class="message-content">안녕하세요! 텍스트 대화 전용 Custom GPT입니다. 무엇을 도와드릴까요?</div>
+                    <div class="message-content">안녕하세요! 무엇을 도와드릴까요?</div>
                 </div>
             </div>
 
             <!-- 하단 입력 영역 -->
             <div class="chat-input-area">
                 <div class="input-wrapper">
-                    <textarea id="prompt-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+                    <label for="image-file-input" class="file-upload-label" title="파일 첨부">
+                        📁
+                    </label>
+                    <input type="file" id="image-file-input" accept="image/*" class="hidden">
+                    <textarea id="prompt-input" placeholder="메시지 또는 링크(URL)를 입력하세요..." rows="1"></textarea>
                     <button id="send-btn" class="btn-send">전송</button>
                 </div>
             </div>
