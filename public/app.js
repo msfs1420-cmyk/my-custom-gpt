@@ -29,19 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('API 키가 저장되었습니다.');
     });
 
-    // 이미지 파일 선택 시 처리 (Base64 변환 및 미리보기)
+    // 이미지 파일 선택 시 처리
     imageFileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = () => {
-                base64Image = reader.result; // "data:image/jpeg;base64,..."
+                base64Image = reader.result;
                 imagePreview.src = base64Image;
                 imagePreviewContainer.classList.remove('hidden');
-            };
-            reader.onerror = (error) => {
-                console.error('이미지 읽기 실패:', error);
             };
         }
     });
@@ -61,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedModel = modelSelect.value;
 
         if (!text && !base64Image) return;
+
+        // API 키가 없으면 먼저 설정창 띄우기 (텍스트 지워지지 않음)
         if (!apiKey) {
             alert('우측 상단 [환경 설정]에서 Groq API Key를 먼저 입력해주세요.');
             settingsModal.classList.remove('hidden');
@@ -90,13 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     model: selectedModel,
                     prompt: text,
-                    image: currentImage // Base64 이미지 데이터 전송
+                    image: currentImage
                 })
             });
 
             const data = await response.json();
             
-            // 로딩 메시지 제거 후 실제 답변 출력
             removeMessage(loadingId);
 
             if (response.ok) {
@@ -118,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 화면에 메시지 추가 헬퍼 함수
     function appendMessage(text, sender, imageUrl = null) {
         const messageDiv = document.createElement('div');
         const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36.substr(2, 9));
