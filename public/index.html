@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom GPT - Vision & Chat</title>
+    <title>Custom GPT - Text Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,7 @@
         <!-- 사이드바 -->
         <aside class="sidebar">
             <button id="new-chat-btn" class="btn-primary">+ 새 채팅</button>
-            <div class="chat-history-list" id="chat-history">
-                <!-- 대화 기록 목록 -->
-            </div>
+            <div class="chat-history-list" id="chat-history"></div>
         </aside>
 
         <!-- 메인 채팅 영역 -->
@@ -21,11 +19,9 @@
             <header class="chat-header">
                 <h1 id="app-title">Custom GPT</h1>
                 <div class="header-controls">
-                    <!-- 최신 활성 Groq 모델 목록 -->
                     <select id="model-select" class="model-select">
-                        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (최신 고성능)</option>
+                        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (고성능)</option>
                         <option value="llama-3.1-8b-instant">Llama 3.1 8B (초고속)</option>
-                        <option value="llama-3.2-11b-vision">Llama 3.2 11B Vision (이미지 분석)</option>
                     </select>
                     <button id="settings-btn" class="btn-secondary">환경 설정</button>
                 </div>
@@ -34,25 +30,14 @@
             <!-- 채팅 메시지 표시 영역 -->
             <div class="chat-messages" id="chat-messages">
                 <div class="message ai-message">
-                    <div class="message-content">안녕하세요! 텍스트 대화와 이미지 분석이 모두 가능한 Custom GPT입니다. 무엇을 도와드릴까요?</div>
+                    <div class="message-content">안녕하세요! 텍스트 대화 전용 Custom GPT입니다. 무엇을 도와드릴까요?</div>
                 </div>
             </div>
 
             <!-- 하단 입력 영역 -->
             <div class="chat-input-area">
-                <!-- 이미지 미리보기 영역 -->
-                <div id="image-preview-container" class="image-preview-container hidden">
-                    <img id="image-preview" src="" alt="업로드 이미지 미리보기">
-                    <button id="remove-image-btn" type="button">×</button>
-                </div>
-
                 <div class="input-wrapper">
-                    <label for="image-file-input" class="file-upload-label" title="이미지 첨부">
-                        📁
-                    </label>
-                    <input type="file" id="image-file-input" accept="image/*" class="hidden">
-                    
-                    <textarea id="prompt-input" placeholder="메시지 또는 링크(URL)를 입력하세요..." rows="1"></textarea>
+                    <textarea id="prompt-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
                     <button id="send-btn" class="btn-send">전송</button>
                 </div>
             </div>
