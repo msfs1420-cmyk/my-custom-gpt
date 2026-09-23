@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!text && !base64Image) return;
 
-        // API 키가 없으면 먼저 설정창 띄우기 (텍스트 지워지지 않음)
+        // API 키가 없으면 먼저 설정창 띄우기
         if (!apiKey) {
             alert('우측 상단 [환경 설정]에서 Groq API Key를 먼저 입력해주세요.');
             settingsModal.classList.remove('hidden');
@@ -118,7 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function appendMessage(text, sender, imageUrl = null) {
         const messageDiv = document.createElement('div');
-        const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36.substr(2, 9));
+        // 문법 오류 수정 완료 (toString(36) 후 substring 사용)
+        const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
         messageDiv.id = messageId;
         messageDiv.className = `message ${sender}-message`;
 
